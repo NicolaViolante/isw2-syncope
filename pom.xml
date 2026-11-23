@@ -9,9 +9,42 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- SonarCloud -->
+        <sonar.organization>nicolaviolante</sonar.organization>
+        <sonar.projectKey>NicolaViolante_isw2-syncope</sonar.projectKey>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
+    <dependencies>
+        <!-- Parsing del JSON restituito dalle API di Jira (come nel codice del prof) -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
+        </dependency>
+
+        <!-- Lettura della storia Git di Syncope (commit, diff, tag) -->
+        <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+            <version>6.10.0.202406032230-r</version>
+        </dependency>
+
+        <!-- Metriche di codice (metodi, complessità ciclomatica, FanOut) dai sorgenti -->
+        <dependency>
+            <groupId>com.github.javaparser</groupId>
+            <artifactId>javaparser-core</artifactId>
+            <version>3.26.2</version>
+        </dependency>
+
+        <!-- Conteggio degli smell (NSmells) con il ruleset quickstart -->
+        <dependency>
+            <groupId>net.sourceforge.pmd</groupId>
+            <artifactId>pmd-java</artifactId>
+            <version>7.7.0</version>
+        </dependency>
+    </dependencies>
 </project>
