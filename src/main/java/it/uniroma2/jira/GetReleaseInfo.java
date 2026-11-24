@@ -1,102 +1,101 @@
 package it.uniroma2.jira;
 
+import it.uniroma2.model.Release;
+import it.uniroma2.release.ReleaseSelector;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.net.URI;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Codice di esempio del prof (getReleaseInfo), adattato solo quanto basta per compilare
- * nel progetto: package, nome della classe, progetto SYNCOPE, API non deprecate.
- * La logica (release con data, ordinate per data, indice progressivo) è invariata:
- * i filtri della Fase 1 (rami di manutenzione, -M, stesso giorno) verranno aggiunti dopo.
+ * Fase 1 – Release. Evoluzione dell'esempio del prof (getReleaseInfo).
+ *
+ * <p>Come nell'esempio: scarica da Jira le versioni del progetto, le ordina per data e assegna
+ * un indice progressivo. In più applica le decisioni della Fase 1 (scarto di milestone e
+ * release di manutenzione, ID dopo i filtri, taglio al 33%) tramite {@link ReleaseSelector}.
+ * Rispetto all'esempio corregge anche un difetto: le release erano indicizzate per data in una
+ * HashMap, quindi due release uscite lo stesso giorno si sovrascrivevano a vicenda.
+ *
+ * <p>Produce due file nella cartella output/:
+ * <ul>
+ *   <li>SYNCOPE_releases_all.csv: tutte le versioni di Jira, con il motivo di ogni scarto;</li>
+ *   <li>SYNCOPE_releases.csv: la linea principale con gli ID 1, 2, 3… e la colonna InDataset.</li>
+ * </ul>
  */
-public class GetReleaseInfo {
+public final class GetReleaseInfo {
 
     private static final Logger LOGGER = Logger.getLogger(GetReleaseInfo.class.getName());
     private static final String PROJ_NAME = "SYNCOPE";
-
-    private static final Map<LocalDateTime, String> releaseNames = new HashMap<>();
-    private static final Map<LocalDateTime, String> releaseID = new HashMap<>();
-    private static final List<LocalDateTime> releases = new ArrayList<>();
+    private static final Path OUTPUT_DIR = Path.of("output");
 
     private GetReleaseInfo() {
     }
 
-    public static void main(String[] args) throws IOException, JSONException {
-        // Riempie la lista con le date delle release e le ordina.
-        // Ignora le release senza data.
-        String url = "https://issues.apache.org/jira/rest/api/2/project/" + PROJ_NAME;
-        JSONObject json = readJsonFromUrl(url);
-        JSONArray versions = json.getJSONArray("versions");
-        for (int i = 0; i < versions.length(); i++) {
-            JSONObject v = versions.getJSONObject(i);
-            if (v.has("releaseDate")) {
-                String name = v.has("name") ? v.get("name").toString() : "";
-                String id = v.has("id") ? v.get("id").toString() : "";
-                addRelease(v.get("releaseDate").toString(), name, id);
+    public static void main(String[] args) throws IOException {
+        List<Release> versions = fetchVersions(PROJ_NAME);
+        List<Release> selected = ReleaseSelector.select(versions);
+        List<Release> mainLine = ReleaseSelector.mainLine(selected);
+        int datasetSize = ReleaseSelector.datasetSize(mainLine.size());
+
+        Files.createDirectories(OUTPUT_DIR);
+        writeAll(selected, OUTPUT_DIR.resolve(PROJ_NAME + "_releases_all.csv"));
+        writeMainLine(mainLine, datasetSize, OUTPUT_DIR.resolve(PROJ_NAME + "_releases.csv"));
+
+        LOGGER.info(() -> String.format(
+                "Versioni su Jira: %d | linea principale: %d | release nel dataset: %d (%s → %s)",
+                versions.size(), mainLine.size(), datasetSize,
+                mainLine.get(0).name(), mainLine.get(datasetSize - 1).name()));
+    }
+
+    /** Scarica tutte le versioni del progetto da Jira (anche quelle non rilasciate). */
+    static List<Release> fetchVersions(String project) throws IOException {
+        JSONObject json = JiraClient.readJsonFromUrl(JiraClient.BASE_URL + "project/" + project);
+        return parseVersions(json.getJSONArray("versions"));
+    }
+
+    static List<Release> parseVersions(JSONArray array) {
+        List<Release> versions = new ArrayList<>();
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject v = array.getJSONObject(i);
+            boolean released = v.optBoolean("released", false);
+            LocalDate date = released && v.has("releaseDate")
+                    ? LocalDate.parse(v.getString("releaseDate"))
+                    : null;
+            versions.add(ReleaseSelector.fromJira(v.optString("id", ""), v.optString("name", ""), date));
+        }
+        return versions;
+    }
+
+    private static void writeAll(List<Release> selected, Path file) throws IOException {
+        try (PrintWriter out = new PrintWriter(Files.newBufferedWriter(file, StandardCharsets.UTF_8))) {
+            out.println("Version ID,Version Name,Date,Line,Kept,Release ID,Discard Reason");
+            for (Release r : selected) {
+                out.printf("%s,%s,%s,%s,%s,%s,%s%n",
+                        r.jiraId(), r.name(),
+                        r.date() == null ? "" : r.date(),
+                        r.major() < 0 ? "" : r.line(),
+                        r.isKept() ? "yes" : "no",
+                        r.isKept() ? String.valueOf(r.seqId()) : "",
+                        r.isKept() ? "" : r.discardReason());
             }
         }
-        // Ordina le release per data
-        Collections.sort(releases);
-        if (releases.size() < 6) {
-            return;
-        }
+    }
 
-        String outname = PROJ_NAME + "VersionInfo.csv";
-        try (FileWriter fileWriter = new FileWriter(outname, StandardCharsets.UTF_8)) {
-            fileWriter.append("Index,Version ID,Version Name,Date\n");
-            for (int i = 0; i < releases.size(); i++) {
-                LocalDateTime date = releases.get(i);
-                fileWriter.append(String.valueOf(i + 1)).append(",")
-                        .append(releaseID.get(date)).append(",")
-                        .append(releaseNames.get(date)).append(",")
-                        .append(date.toString()).append("\n");
+    private static void writeMainLine(List<Release> mainLine, int datasetSize, Path file) throws IOException {
+        try (PrintWriter out = new PrintWriter(Files.newBufferedWriter(file, StandardCharsets.UTF_8))) {
+            out.println("Release ID,Version ID,Version Name,Date,InDataset");
+            for (Release r : mainLine) {
+                out.printf("%d,%s,%s,%s,%s%n", r.seqId(), r.jiraId(), r.name(), r.date(),
+                        r.seqId() <= datasetSize ? "yes" : "no");
             }
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Errore nella scrittura del CSV", e);
         }
-    }
-
-    private static void addRelease(String strDate, String name, String id) {
-        LocalDateTime dateTime = LocalDate.parse(strDate).atStartOfDay();
-        if (!releases.contains(dateTime)) {
-            releases.add(dateTime);
-        }
-        releaseNames.put(dateTime, name);
-        releaseID.put(dateTime, id);
-    }
-
-    public static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
-        try (InputStream is = URI.create(url).toURL().openStream();
-             BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-            return new JSONObject(readAll(rd));
-        }
-    }
-
-    private static String readAll(Reader rd) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        int cp;
-        while ((cp = rd.read()) != -1) {
-            sb.append((char) cp);
-        }
-        return sb.toString();
     }
 }

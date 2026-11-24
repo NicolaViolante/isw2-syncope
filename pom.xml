@@ -19,7 +19,7 @@
     </properties>
 
     <dependencies>
-        <!-- Parsing del JSON restituito dalle API di Jira (come nel codice del prof) -->
+        <!-- Parsing del JSON restituito dalle API di Jira e di SonarCloud -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
@@ -38,13 +38,6 @@
             <groupId>com.github.javaparser</groupId>
             <artifactId>javaparser-core</artifactId>
             <version>3.26.2</version>
-        </dependency>
-
-        <!-- Conteggio degli smell (NSmells) con il ruleset quickstart -->
-        <dependency>
-            <groupId>net.sourceforge.pmd</groupId>
-            <artifactId>pmd-java</artifactId>
-            <version>7.7.0</version>
         </dependency>
     </dependencies>
 </project>
