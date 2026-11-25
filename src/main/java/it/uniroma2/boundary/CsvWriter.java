@@ -1,6 +1,8 @@
 package it.uniroma2.boundary;
 
 import it.uniroma2.entity.Release;
+import it.uniroma2.entity.ReleaseClass;
+import it.uniroma2.entity.Snapshot;
 import it.uniroma2.entity.Ticket;
 import it.uniroma2.entity.Ticket.JiraVersion;
 
@@ -10,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -61,6 +64,42 @@ public final class CsvWriter {
                         join(t.affectedVersions(), JiraVersion::name),
                         join(t.fixVersions(), JiraVersion::id),
                         join(t.fixVersions(), JiraVersion::name));
+            }
+        }
+    }
+
+    /** Lo snapshot scelto per ogni release (Fase 3). */
+    public static void writeSnapshots(List<Snapshot> snapshots, Map<Integer, Integer> classesByRelease, Path file)
+            throws IOException {
+        try (PrintWriter out = open(file)) {
+            out.println("Release ID,Version Name,Release Date,Reference,Commit,Commit Date,From Tag,Classes");
+            for (Snapshot s : snapshots) {
+                Release r = s.release();
+                out.printf("%d,%s,%s,%s,%s,%s,%s,%d%n", r.seqId(), r.name(), r.date(), s.reference(), s.commitId(),
+                        s.commitDate(), s.fromTag() ? "yes" : "no", classesByRelease.getOrDefault(r.seqId(), 0));
+            }
+        }
+    }
+
+    /** L'inventario delle classi di produzione: una riga per ogni coppia classe-release (Fase 3). */
+    public static void writeClasses(List<ReleaseClass> classes, Path file) throws IOException {
+        try (PrintWriter out = open(file)) {
+            out.println("Release ID,Class,Class ID");
+            for (ReleaseClass c : classes) {
+                out.printf("%d,%s,%s%n", c.releaseId(), c.path(), c.classId());
+            }
+        }
+    }
+
+    /** Numero di classi per modulo Maven e per release, per controllare l'inventario (Fase 3). */
+    public static void writeModuleCounts(Map<String, Map<Integer, Integer>> countsByModule, List<Integer> releaseIds,
+                                         Path file) throws IOException {
+        try (PrintWriter out = open(file)) {
+            out.println("Module," + releaseIds.stream().map(String::valueOf).collect(Collectors.joining(",")));
+            for (Map.Entry<String, Map<Integer, Integer>> e : countsByModule.entrySet()) {
+                out.println(e.getKey() + "," + releaseIds.stream()
+                        .map(id -> String.valueOf(e.getValue().getOrDefault(id, 0)))
+                        .collect(Collectors.joining(",")));
             }
         }
     }
