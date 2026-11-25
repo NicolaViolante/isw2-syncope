@@ -1,5 +1,8 @@
 package it.uniroma2.boundary;
 
+import it.uniroma2.entity.ClassMetrics;
+import it.uniroma2.entity.CodeMetrics;
+import it.uniroma2.entity.ProcessMetrics;
 import it.uniroma2.entity.Release;
 import it.uniroma2.entity.ReleaseClass;
 import it.uniroma2.entity.Snapshot;
@@ -12,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -100,6 +104,30 @@ public final class CsvWriter {
                 out.println(e.getKey() + "," + releaseIds.stream()
                         .map(id -> String.valueOf(e.getValue().getOrDefault(id, 0)))
                         .collect(Collectors.joining(",")));
+            }
+        }
+    }
+
+    /**
+     * Le feature di ogni classe in ogni release (Fase 4). Le colonne "_Hist" sono le versioni
+     * "dall'inizio"; le metriche di codice sono vuote se JavaParser non ha letto il file.
+     */
+    public static void writeMetrics(List<ClassMetrics> rows, Path file) throws IOException {
+        try (PrintWriter out = open(file)) {
+            out.println("Release ID,Class,Class ID,LOC,NOM,CyclomaticComplexity,FanOut,"
+                    + "NR,NFix,NAuth,LOCAdded,MaxLOCAdded,Churn,MaxChurn,ChangeSetSize,MaxChangeSet,"
+                    + "NR_Hist,NFix_Hist,NAuth_Hist,LOCAdded_Hist,ChangeSetSize_Hist,Age,WeightedAge");
+            for (ClassMetrics r : rows) {
+                CodeMetrics c = r.code();
+                ProcessMetrics p = r.inRelease();
+                ProcessMetrics h = r.history();
+                out.printf(Locale.ROOT, "%d,%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f%n",
+                        r.releaseId(), r.path(), r.classId(),
+                        c == null ? ",,," : c.loc() + "," + c.nom() + "," + c.cyclomaticComplexity() + "," + c.fanOut(),
+                        p.nr(), p.nFix(), p.nAuth(), p.locAdded(), p.maxLocAdded(), p.churn(), p.maxChurn(),
+                        p.changeSetSize(), p.maxChangeSet(),
+                        h.nr(), h.nFix(), h.nAuth(), h.locAdded(), h.changeSetSize(),
+                        r.age().age(), r.age().weightedAge());
             }
         }
     }
