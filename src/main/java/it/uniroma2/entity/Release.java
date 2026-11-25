@@ -1,6 +1,8 @@
-package it.uniroma2.model;
+package it.uniroma2.entity;
 
 import java.time.LocalDate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Una versione di Jira del progetto.
@@ -15,6 +17,20 @@ import java.time.LocalDate;
  */
 public record Release(String jiraId, String name, LocalDate date, int major, int minor,
                       int seqId, String discardReason) {
+
+    private static final Pattern LINE = Pattern.compile("^(\\d+)\\.(\\d+)");
+
+    /** Crea una Release dai dati grezzi di Jira; major/minor = -1 se il nome non inizia con "X.Y". */
+    public static Release fromJira(String jiraId, String name, LocalDate date) {
+        Matcher m = LINE.matcher(name);
+        int major = -1;
+        int minor = -1;
+        if (m.find()) {
+            major = Integer.parseInt(m.group(1));
+            minor = Integer.parseInt(m.group(2));
+        }
+        return new Release(jiraId, name, date, major, minor, 0, null);
+    }
 
     public boolean isKept() {
         return discardReason == null;

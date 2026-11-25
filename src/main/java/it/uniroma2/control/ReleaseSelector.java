@@ -1,6 +1,6 @@
-package it.uniroma2.release;
+package it.uniroma2.control;
 
-import it.uniroma2.model.Release;
+import it.uniroma2.entity.Release;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -32,21 +32,8 @@ public final class ReleaseSelector {
     public static final String REASON_SAME_DAY = "stesso giorno di ";
 
     private static final Pattern MILESTONE = Pattern.compile("(?i)[-.]M\\d+");
-    private static final Pattern LINE = Pattern.compile("^(\\d+)\\.(\\d+)");
 
     private ReleaseSelector() {
-    }
-
-    /** Costruisce una Release dai dati grezzi di Jira; major/minor = -1 se il nome non è numerico. */
-    public static Release fromJira(String jiraId, String name, LocalDate date) {
-        var m = LINE.matcher(name);
-        int major = -1;
-        int minor = -1;
-        if (m.find()) {
-            major = Integer.parseInt(m.group(1));
-            minor = Integer.parseInt(m.group(2));
-        }
-        return new Release(jiraId, name, date, major, minor, 0, null);
     }
 
     /**

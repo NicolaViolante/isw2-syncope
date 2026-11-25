@@ -1,4 +1,4 @@
-package it.uniroma2.jira;
+package it.uniroma2.boundary;
 
 import org.json.JSONObject;
 
