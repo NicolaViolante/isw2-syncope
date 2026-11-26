@@ -14,8 +14,8 @@ import java.util.Map;
  *
  * <p>Regola: alla prima release l'identità di una classe è il suo percorso. In ogni release
  * successiva una classe conserva l'identità che aveva nella release precedente se ha lo stesso
- * percorso, oppure se Git ha riconosciuto che è stata rinominata o spostata da un altro percorso.
- * Altrimenti è una classe nuova e la sua identità è il percorso attuale.
+ * percorso, oppure se Git ha riconosciuto che è stata spostata da un altro percorso con lo stesso nome di file
+ * ({@link RenamePolicy}). Altrimenti è una classe nuova e la sua identità è il percorso attuale.
  */
 public final class ClassInventoryBuilder {
 
@@ -64,11 +64,12 @@ public final class ClassInventoryBuilder {
         return renamesFollowed;
     }
 
-    /** Inverte le rinomine (nuovo → vecchio) tenendo solo quelle tra file di produzione. */
+    /** Inverte le rinomine (nuovo → vecchio) tenendo solo quelle tra file di produzione accettate da RenamePolicy. */
     private static Map<String, String> invertProduction(Map<String, String> oldToNew) {
         Map<String, String> newToOld = new HashMap<>();
         oldToNew.forEach((oldPath, newPath) -> {
-            if (ProductionFiles.isProduction(oldPath) && ProductionFiles.isProduction(newPath)) {
+            if (ProductionFiles.isProduction(oldPath) && ProductionFiles.isProduction(newPath)
+                    && RenamePolicy.accepts(oldPath, newPath)) {
                 newToOld.put(newPath, oldPath);
             }
         });

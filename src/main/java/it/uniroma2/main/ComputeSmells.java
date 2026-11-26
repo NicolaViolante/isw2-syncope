@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -25,7 +26,7 @@ import java.util.logging.Logger;
  * cartella pulita (output/sonar/src), analizzate con SonarScanner sul progetto SonarCloud dedicato e, finita
  * l'elaborazione, viene letto il numero di code smell per file. Il fork viene solo letto. Il risultato di
  * ogni release viene salvato subito: se l'esecuzione si interrompe, rilanciandola le release già fatte vengono
- * saltate.
+ * saltate (il loro NSmells viene riletto per percorso e associato ai Class ID dell'inventario attuale).
  *
  * <p>Richiede la variabile d'ambiente SONAR_TOKEN (impostata nella configurazione di esecuzione, mai nel
  * codice). Argomento opzionale: percorso del fork di Syncope (default ~/IdeaProjects/syncope).
@@ -69,12 +70,17 @@ public final class ComputeSmells {
         try (GitRepository git = new GitRepository(syncope)) {
             for (Release release : releases) {
                 Path done = WORK_DIR.resolve("smells-" + release.seqId() + ".csv");
+                Map<String, String> atTag = classes.get(release.seqId());
                 if (Files.exists(done)) {
-                    all.addAll(CsvReader.readSmells(done));
+                    // release già analizzata: si riusa NSmells per percorso e si riassociano i Class ID attuali
+                    Map<String, Integer> saved = new HashMap<>();
+                    for (ClassSmells s : CsvReader.readSmells(done)) {
+                        saved.put(s.path(), s.nSmells());
+                    }
+                    all.addAll(SmellAssigner.assign(release.seqId(), atTag, saved));
                     LOGGER.info(() -> release.name() + ": già analizzata, letta da " + done);
                     continue;
                 }
-                Map<String, String> atTag = classes.get(release.seqId());
                 long start = System.nanoTime();
                 git.exportFiles(git.snapshotOf(release), atTag.keySet(), sources);
                 String taskId = scanner.analyze(sources.toFile(), release.name(), WORK_DIR);

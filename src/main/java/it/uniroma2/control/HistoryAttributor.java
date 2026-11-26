@@ -15,8 +15,8 @@ import java.util.Set;
  *
  * <p>La storia viene percorsa all'indietro, dal tag verso il primo commit. Si parte dai percorsi delle
  * classi nello snapshot e, quando si incontra una rinomina, la classe viene seguita sul percorso
- * precedente. Una aggiunta (o copia) è la nascita della classe: prima di quel commit il percorso non
- * appartiene più a lei.
+ * precedente, se il nome del file non cambia ({@link RenamePolicy}). Una aggiunta, una copia o una rinomina con
+ * cambio di nome sono la nascita della classe: prima di quel commit il percorso non appartiene più a lei.
  */
 public final class HistoryAttributor {
 
@@ -56,7 +56,7 @@ public final class HistoryAttributor {
                     case ADD, COPY -> tracked.remove(change.newPath());
                     case RENAME -> {
                         String owner = tracked.remove(change.newPath());
-                        if (owner != null) {
+                        if (owner != null && RenamePolicy.accepts(change.oldPath(), change.newPath())) {
                             movedBack.put(change.oldPath(), owner);
                         }
                     }

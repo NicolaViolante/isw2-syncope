@@ -1,6 +1,7 @@
 package it.uniroma2.boundary;
 
 import it.uniroma2.entity.ClassSmells;
+import it.uniroma2.entity.MetricsLine;
 import it.uniroma2.entity.Release;
 
 import java.io.IOException;
@@ -85,6 +86,28 @@ public final class CsvReader {
             }
             String[] f = line.split(",", -1);
             rows.add(new ClassSmells(Integer.parseInt(f[0]), f[1], f[2], f[3].isEmpty() ? null : Integer.valueOf(f[3])));
+        }
+        return rows;
+    }
+
+    /**
+     * Legge le metriche della Fase 4 (data/SYNCOPE_metrics.csv). Le prime tre colonne sono Release ID, Class e
+     * Class ID; tutte le altre sono feature e vengono lette come testo, senza cambiarne il formato.
+     *
+     * @param featureNames lista che viene riempita con i nomi delle feature, nell'ordine delle colonne
+     */
+    public static List<MetricsLine> readMetrics(Path file, List<String> featureNames)
+            throws IOException {
+        List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        String[] header = lines.get(0).split(",", -1);
+        featureNames.addAll(List.of(header).subList(3, header.length));
+        List<MetricsLine> rows = new ArrayList<>();
+        for (String line : lines.subList(1, lines.size())) {
+            if (line.isBlank()) {
+                continue;
+            }
+            String[] f = line.split(",", -1);
+            rows.add(new MetricsLine(Integer.parseInt(f[0]), f[1], List.of(f).subList(3, f.length)));
         }
         return rows;
     }

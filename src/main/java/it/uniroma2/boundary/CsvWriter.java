@@ -3,6 +3,8 @@ package it.uniroma2.boundary;
 import it.uniroma2.entity.ClassMetrics;
 import it.uniroma2.entity.ClassSmells;
 import it.uniroma2.entity.CodeMetrics;
+import it.uniroma2.entity.Dataset;
+import it.uniroma2.entity.DatasetRow;
 import it.uniroma2.entity.ProcessMetrics;
 import it.uniroma2.entity.Release;
 import it.uniroma2.entity.ReleaseClass;
@@ -140,6 +142,17 @@ public final class CsvWriter {
             for (ClassSmells r : rows) {
                 out.println(r.releaseId() + "," + r.path() + "," + r.classId() + ","
                         + (r.nSmells() == null ? "" : r.nSmells()));
+            }
+        }
+    }
+
+    /** Il dataset nel formato del prof: Project, Class, ReleaseID, feature, NSmells, Bugginess (yes/no). */
+    public static void writeDataset(Dataset dataset, Path file) throws IOException {
+        try (PrintWriter out = open(file)) {
+            out.println("Project,Class,ReleaseID," + String.join(",", dataset.featureNames()) + ",NSmells,Bugginess");
+            for (DatasetRow r : dataset.rows()) {
+                out.println(r.project() + "," + r.path() + "," + r.releaseId() + "," + String.join(",", r.features())
+                        + "," + r.nSmells() + "," + (r.buggy() ? "yes" : "no"));
             }
         }
     }
