@@ -1,5 +1,6 @@
 package it.uniroma2.boundary;
 
+import it.uniroma2.entity.ClassSmells;
 import it.uniroma2.entity.Release;
 
 import java.io.IOException;
@@ -72,5 +73,19 @@ public final class CsvReader {
             }
         }
         return keys;
+    }
+
+    /** Rilegge un file scritto da CsvWriter.writeSmells (per riprendere un'esecuzione interrotta). */
+    public static List<ClassSmells> readSmells(Path file) throws IOException {
+        List<ClassSmells> rows = new ArrayList<>();
+        List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        for (String line : lines.subList(1, lines.size())) {
+            if (line.isBlank()) {
+                continue;
+            }
+            String[] f = line.split(",", -1);
+            rows.add(new ClassSmells(Integer.parseInt(f[0]), f[1], f[2], f[3].isEmpty() ? null : Integer.valueOf(f[3])));
+        }
+        return rows;
     }
 }

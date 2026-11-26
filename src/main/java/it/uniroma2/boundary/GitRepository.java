@@ -27,13 +27,18 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Boundary verso il repository Git di Syncope (copia locale della fork), tramite JGit.
@@ -210,6 +215,39 @@ public final class GitRepository implements AutoCloseable {
             }
         }
         return oldest;
+    }
+
+    /**
+     * Copia i file indicati, così come sono nello snapshot, in una cartella (con gli stessi percorsi relativi).
+     * La cartella viene prima svuotata. Il fork non viene toccato: i file sono letti dagli oggetti di Git.
+     */
+    public void exportFiles(Snapshot snapshot, Collection<String> paths, Path targetDir) throws IOException {
+        deleteRecursively(targetDir);
+        Files.createDirectories(targetDir);
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit commit = walk.parseCommit(repository.resolve(snapshot.commitId()));
+            for (String path : paths) {
+                try (TreeWalk treeWalk = TreeWalk.forPath(repository, path, commit.getTree())) {
+                    if (treeWalk == null) {
+                        throw new IOException("File non presente nello snapshot " + snapshot.reference() + ": " + path);
+                    }
+                    Path target = targetDir.resolve(path);
+                    Files.createDirectories(target.getParent());
+                    Files.write(target, repository.open(treeWalk.getObjectId(0)).getBytes());
+                }
+            }
+        }
+    }
+
+    private static void deleteRecursively(Path dir) throws IOException {
+        if (!Files.exists(dir)) {
+            return;
+        }
+        try (Stream<Path> files = Files.walk(dir)) {
+            for (Path f : files.sorted(Comparator.reverseOrder()).toList()) {
+                Files.delete(f);
+            }
+        }
     }
 
     /** Il testo di un file nello snapshot (UTF-8). */

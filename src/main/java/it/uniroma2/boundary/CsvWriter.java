@@ -1,6 +1,7 @@
 package it.uniroma2.boundary;
 
 import it.uniroma2.entity.ClassMetrics;
+import it.uniroma2.entity.ClassSmells;
 import it.uniroma2.entity.CodeMetrics;
 import it.uniroma2.entity.ProcessMetrics;
 import it.uniroma2.entity.Release;
@@ -128,6 +129,17 @@ public final class CsvWriter {
                         p.changeSetSize(), p.maxChangeSet(),
                         h.nr(), h.nFix(), h.nAuth(), h.locAdded(), h.changeSetSize(),
                         r.age().age(), r.age().weightedAge());
+            }
+        }
+    }
+
+    /** NSmells di ogni classe (Fase 5); vuoto se SonarCloud non ha restituito il file. */
+    public static void writeSmells(List<ClassSmells> rows, Path file) throws IOException {
+        try (PrintWriter out = open(file)) {
+            out.println("Release ID,Class,Class ID,NSmells");
+            for (ClassSmells r : rows) {
+                out.println(r.releaseId() + "," + r.path() + "," + r.classId() + ","
+                        + (r.nSmells() == null ? "" : r.nSmells()));
             }
         }
     }
