@@ -3,6 +3,8 @@ package it.uniroma2.boundary;
 import it.uniroma2.entity.ClassSmells;
 import it.uniroma2.entity.MetricsLine;
 import it.uniroma2.entity.Release;
+import it.uniroma2.entity.Ticket;
+import it.uniroma2.entity.Ticket;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -110,5 +112,51 @@ public final class CsvReader {
             rows.add(new MetricsLine(Integer.parseInt(f[0]), f[1], List.of(f).subList(3, f.length)));
         }
         return rows;
+    }
+
+    /** Tutte le versioni di Jira con l'esito della Fase 1 (data/SYNCOPE_releases_all.csv). */
+    public static List<Release> readAllReleases(Path file) throws IOException {
+        List<Release> releases = new ArrayList<>();
+        List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        // intestazione: Version ID,Version Name,Date,Line,Kept,Release ID,Discard Reason
+        for (String line : lines.subList(1, lines.size())) {
+            if (line.isBlank()) {
+                continue;
+            }
+            String[] f = line.split(",", -1);
+            LocalDate date = f[2].isEmpty() ? null : LocalDate.parse(f[2]);
+            Release r = Release.fromJira(f[0], f[1], date);
+            releases.add("yes".equals(f[4]) ? r.withSeqId(Integer.parseInt(f[5])) : r.discarded(f[6]));
+        }
+        return releases;
+    }
+
+    /** I ticket bug della Fase 2 (data/SYNCOPE_tickets.csv); più versioni nella stessa cella separate da ";". */
+    public static List<Ticket> readTickets(Path file) throws IOException {
+        List<Ticket> tickets = new ArrayList<>();
+        List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        // intestazione: Key,Created,Resolved,AV IDs,AV Names,FixVersion IDs,FixVersion Names
+        for (String line : lines.subList(1, lines.size())) {
+            if (line.isBlank()) {
+                continue;
+            }
+            String[] f = line.split(",", -1);
+            tickets.add(new Ticket(f[0], f[1].isEmpty() ? null : LocalDate.parse(f[1]),
+                    f[2].isEmpty() ? null : LocalDate.parse(f[2]), versions(f[3], f[4]), versions(f[5], f[6])));
+        }
+        return tickets;
+    }
+
+    private static List<Ticket.JiraVersion> versions(String ids, String names) {
+        List<Ticket.JiraVersion> versions = new ArrayList<>();
+        if (ids.isEmpty()) {
+            return versions;
+        }
+        String[] i = ids.split(";");
+        String[] n = names.split(";");
+        for (int k = 0; k < i.length; k++) {
+            versions.add(new Ticket.JiraVersion(i[k], k < n.length ? n[k] : ""));
+        }
+        return versions;
     }
 }

@@ -8,6 +8,8 @@ import it.uniroma2.entity.DatasetRow;
 import it.uniroma2.entity.ProcessMetrics;
 import it.uniroma2.entity.Release;
 import it.uniroma2.entity.TicketFixes;
+import it.uniroma2.entity.TicketVersions;
+import it.uniroma2.entity.TicketVersions;
 import it.uniroma2.entity.ReleaseClass;
 import it.uniroma2.entity.Snapshot;
 import it.uniroma2.entity.Ticket;
@@ -169,6 +171,21 @@ public final class CsvWriter {
                         + "," + f.otherFiles());
             }
         }
+    }
+
+    /** OV, FV, IV e origine della IV di ogni ticket (Fase 8); vuoti per i ticket esclusi. */
+    public static void writeVersions(List<TicketVersions> versions, Path file) throws IOException {
+        try (PrintWriter out = open(file)) {
+            out.println("Key,OV,FV,IV,IV Source");
+            for (TicketVersions v : versions) {
+                out.println(v.key() + "," + nullable(v.ov()) + "," + nullable(v.fv()) + "," + nullable(v.iv()) + ","
+                        + v.source());
+            }
+        }
+    }
+
+    private static String nullable(Integer value) {
+        return value == null ? "" : value.toString();
     }
 
     private static PrintWriter open(Path file) throws IOException {
