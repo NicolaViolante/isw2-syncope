@@ -12,6 +12,7 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -36,8 +37,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -248,6 +252,44 @@ public final class GitRepository implements AutoCloseable {
                 Files.delete(f);
             }
         }
+    }
+
+    /**
+     * I messaggi di tutti i commit raggiungibili da un qualunque ramo o tag (git log --all), merge esclusi:
+     * id → messaggio completo.
+     */
+    public Map<String, String> allCommitMessages() throws IOException {
+        Map<String, String> messages = new LinkedHashMap<>();
+        try (RevWalk walk = new RevWalk(repository)) {
+            walk.setRevFilter(RevFilter.NO_MERGES);
+            for (Ref ref : repository.getRefDatabase().getRefs()) {
+                ObjectId id = ref.getPeeledObjectId() != null ? ref.getPeeledObjectId() : ref.getObjectId();
+                if (id == null) {
+                    continue;
+                }
+                RevObject target = walk.peel(walk.parseAny(id));
+                if (target instanceof RevCommit commit) {
+                    walk.markStart(commit);
+                }
+            }
+            for (RevCommit commit : walk) {
+                messages.put(commit.getName(), commit.getFullMessage());
+            }
+        }
+        return messages;
+    }
+
+    /** Gli id dei commit (merge esclusi) raggiungibili da master. */
+    public Set<String> commitsOnMaster() throws IOException {
+        Set<String> ids = new HashSet<>();
+        try (RevWalk walk = new RevWalk(repository)) {
+            walk.setRevFilter(RevFilter.NO_MERGES);
+            walk.markStart(walk.parseCommit(repository.resolve(MASTER)));
+            for (RevCommit commit : walk) {
+                ids.add(commit.getName());
+            }
+        }
+        return ids;
     }
 
     /** Il testo di un file nello snapshot (UTF-8). */

@@ -15,7 +15,10 @@ import java.util.regex.Pattern;
  *   <li>la chiave è riconosciuta esattamente (SYNCOPE-1 non corrisponde a SYNCOPE-10), senza distinguere
  *       maiuscole e minuscole;</li>
  *   <li>un commit che cita un bug e un ticket di altro tipo conta come fix;</li>
- *   <li>i revert non sono fix: annullano una modifica invece di correggere un difetto.</li>
+ *   <li>i revert puri (titolo che inizia con "Revert", come quelli generati da git revert) non sono fix: annullano
+ *       un fix invece di farlo. Un commit con un titolo proprio che cita il ticket resta un fix anche se nel corpo
+ *       dice di annullare una modifica precedente (es. "[SYNCOPE-1763] Back to CXF 3.5.6 as temporary
+ *       workaround").</li>
  * </ul>
  */
 public final class FixCommitFinder {
@@ -55,9 +58,8 @@ public final class FixCommitFinder {
         return !citedBugs(message).isEmpty();
     }
 
-    /** Un revert: il messaggio inizia con "Revert" oppure contiene la frase standard di git revert. */
+    /** Un revert puro: il titolo (prima riga) del messaggio inizia con "Revert". */
     static boolean isRevert(String message) {
-        String m = message.strip().toLowerCase(Locale.ROOT);
-        return m.startsWith("revert") || m.contains("this reverts commit");
+        return message.strip().toLowerCase(Locale.ROOT).startsWith("revert");
     }
 }

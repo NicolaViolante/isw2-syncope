@@ -7,6 +7,7 @@ import it.uniroma2.entity.Dataset;
 import it.uniroma2.entity.DatasetRow;
 import it.uniroma2.entity.ProcessMetrics;
 import it.uniroma2.entity.Release;
+import it.uniroma2.entity.TicketFixes;
 import it.uniroma2.entity.ReleaseClass;
 import it.uniroma2.entity.Snapshot;
 import it.uniroma2.entity.Ticket;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -153,6 +155,18 @@ public final class CsvWriter {
             for (DatasetRow r : dataset.rows()) {
                 out.println(r.project() + "," + r.path() + "," + r.releaseId() + "," + String.join(",", r.features())
                         + "," + r.nSmells() + "," + (r.buggy() ? "yes" : "no"));
+            }
+        }
+    }
+
+    /** I fix di ogni ticket (Fase 7); più valori nella stessa cella sono separati da ";". */
+    public static void writeFixes(List<TicketFixes> fixes, Path file) throws IOException {
+        try (PrintWriter out = open(file)) {
+            out.println("Key,Category,Master Commits,Branch Commits,Class IDs,Other Java Files");
+            for (TicketFixes f : fixes) {
+                out.println(f.key() + "," + f.category() + "," + String.join(";", f.masterCommits()) + ","
+                        + String.join(";", f.branchCommits()) + "," + String.join(";", new TreeSet<>(f.classIds()))
+                        + "," + f.otherFiles());
             }
         }
     }
