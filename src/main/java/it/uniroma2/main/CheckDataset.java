@@ -95,9 +95,9 @@ public final class CheckDataset {
         LOGGER.info(() -> String.format(Locale.ROOT, "Ticket bug con almeno un commit: %d su %d (%.1f%%)",
                 linkage.ticketsWithCommits(), linkage.bugTickets(),
                 Linkage.percent(linkage.ticketsWithCommits(), linkage.bugTickets())));
-        LOGGER.info(() -> String.format(Locale.ROOT, "Ticket usati (con OV e FV) con almeno un commit: %d su %d (%.1f%%)",
-                linkage.usedWithCommits(), linkage.usedTickets(),
-                Linkage.percent(linkage.usedWithCommits(), linkage.usedTickets())));
+        LOGGER.info(() -> String.format(Locale.ROOT, "Ticket usati (con OV e FV): %d, di cui con commit: %d (la FV viene "
+                        + "dal codice, quindi un ticket usato ha sempre un commit di fix)", linkage.usedTickets(),
+                linkage.usedWithCommits()));
         LOGGER.info(() -> String.format(Locale.ROOT, "Ticket bug i cui fix toccano classi del dataset: %d su %d (%.1f%%)",
                 linkage.ticketsWithClasses(), linkage.bugTickets(),
                 Linkage.percent(linkage.ticketsWithClasses(), linkage.bugTickets())));

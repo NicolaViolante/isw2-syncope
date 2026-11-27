@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -15,34 +16,46 @@ import java.util.Optional;
  *
  * <ul>
  *   <li>OV: ultima release con data uguale o precedente all'apertura del ticket;</li>
- *   <li>FV: prima release uscita dopo il giorno di risoluzione;</li>
+ *   <li>FV: prima release successiva all'OV il cui tag contiene un commit di fix del ticket
+ *       ({@link FixVersionFinder});</li>
  *   <li>IV: prima AV ricondotta alla linea principale ({@link AffectedVersionMapper}) se è ≤ OV; altrimenti, e per
  *       i ticket senza AV, IV = FV − P·(FV − OV), arrotondata e limitata a [1, OV];</li>
  *   <li>P: media di (FV − IV)/(FV − OV) sui ticket con AV coerenti (di qualunque categoria), esclusi quelli con
  *       FV = OV;</li>
- *   <li>ticket senza OV (aperti prima della prima release) o senza FV (risolti dopo l'ultima) sono esclusi.</li>
+ *   <li>ticket senza OV (aperti prima della prima release) o senza FV (nessuna release successiva all'OV contiene un
+ *       commit di fix) sono esclusi.</li>
  * </ul>
  */
 public final class TicketVersionResolver {
 
     private final List<Release> mainLine;
     private final AffectedVersionMapper mapper;
+    private final FixVersionFinder fixVersions;
     private double proportion;
     private int proportionTickets;
 
-    public TicketVersionResolver(List<Release> allVersions) {
+    /**
+     * @param allVersions tutte le versioni di Jira (Fase 1)
+     * @param fixVersions la ricerca della FV nei tag della linea principale
+     */
+    public TicketVersionResolver(List<Release> allVersions, FixVersionFinder fixVersions) {
         this.mainLine = allVersions.stream().filter(Release::isKept)
                 .sorted(Comparator.comparingInt(Release::seqId)).toList();
         this.mapper = new AffectedVersionMapper(allVersions);
+        this.fixVersions = fixVersions;
     }
 
-    public List<TicketVersions> resolve(List<Ticket> tickets) {
+    /**
+     * @param tickets    i ticket bug (Fase 2)
+     * @param fixCommits   per ogni ticket, i suoi commit di fix (Fase 7); un ticket assente non ha commit
+     */
+    public List<TicketVersions> resolve(List<Ticket> tickets, Map<String, List<String>> fixCommits) {
         List<TicketVersions> partial = new ArrayList<>();
         double sum = 0;
         int count = 0;
         for (Ticket t : tickets) {
             Integer ov = openingVersion(t.created());
-            Integer fv = fixVersion(t.resolved());
+            Integer fv = fixVersions.fixVersion(ov == null ? 0 : ov, fixCommits.getOrDefault(t.key(), List.of()));
             if (ov == null) {
                 partial.add(new TicketVersions(t.key(), null, fv, null, TicketVersions.Source.EXCLUDED_NO_OV));
                 continue;
@@ -94,15 +107,6 @@ public final class TicketVersionResolver {
             }
         }
         return ov;
-    }
-
-    private Integer fixVersion(LocalDate resolved) {
-        for (Release r : mainLine) {
-            if (r.date().isAfter(resolved)) {
-                return r.seqId();
-            }
-        }
-        return null;
     }
 
     /** P calcolato dall'ultima chiamata a resolve. */

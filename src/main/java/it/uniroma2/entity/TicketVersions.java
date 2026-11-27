@@ -4,7 +4,7 @@ package it.uniroma2.entity;
  * Le versioni di un ticket sulla linea principale (Release ID della Fase 1).
  *
  * @param ov     Opening Version; null se il ticket è stato aperto prima della prima release
- * @param fv     Fix Version; null se il ticket è stato risolto dopo l'ultima release
+ * @param fv     Fix Version: prima release dopo l'OV il cui tag contiene un fix; null se non esiste
  * @param iv     Injected Version; null per i ticket esclusi
  * @param source da dove viene la IV, oppure perché il ticket è escluso
  */
@@ -20,7 +20,8 @@ public record TicketVersions(String key, Integer ov, Integer fv, Integer iv, Sou
         PROPORTION_INCOHERENT_AV,
         /** escluso: aperto prima della prima release (nessuna OV) */
         EXCLUDED_NO_OV,
-        /** escluso: risolto dopo l'ultima release (nessuna FV) */
+        /** escluso: nessuna release dopo l'OV contiene un commit di fix (senza commit, fix solo su rami scartati o
+         *  non ancora rilasciato) */
         EXCLUDED_NO_FV
     }
 
