@@ -8,9 +8,6 @@ import it.uniroma2.entity.Release;
 import it.uniroma2.entity.Ticket;
 import it.uniroma2.entity.TicketFixes;
 import it.uniroma2.entity.TicketVersions;
-import it.uniroma2.entity.Ticket;
-import it.uniroma2.entity.TicketFixes;
-import it.uniroma2.entity.TicketVersions;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -166,19 +163,32 @@ public final class CsvReader {
         return versions;
     }
 
-    /** Rilegge un dataset scritto da CsvWriter.writeDataset (Project, Class, ReleaseID, feature, NSmells, Bugginess). */
+    /**
+     * Rilegge un dataset scritto da CsvWriter.writeDataset (Project, Class, ReleaseID, feature, NSmells, Bugginess).
+     * Una riga con un numero di colonne diverso dall'intestazione o con Bugginess diversa da yes/no è un errore.
+     */
     public static Dataset readDataset(Path file) throws IOException {
         List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
         String[] header = lines.get(0).split(",", -1);
         List<String> featureNames = List.of(header).subList(3, header.length - 2);
         List<DatasetRow> rows = new ArrayList<>();
-        for (String line : lines.subList(1, lines.size())) {
+        for (int n = 1; n < lines.size(); n++) {
+            String line = lines.get(n);
             if (line.isBlank()) {
                 continue;
             }
             String[] f = line.split(",", -1);
+            String bugginess = f[f.length - 1];
+            if (f.length != header.length) {
+                throw new IllegalArgumentException(file + ", riga " + (n + 1) + ": " + f.length + " colonne invece di "
+                        + header.length);
+            }
+            if (!"yes".equals(bugginess) && !"no".equals(bugginess)) {
+                throw new IllegalArgumentException(file + ", riga " + (n + 1) + ": Bugginess \"" + bugginess
+                        + "\" invece di yes/no");
+            }
             rows.add(new DatasetRow(f[0], Integer.parseInt(f[2]), f[1], List.of(f).subList(3, f.length - 2),
-                    Integer.parseInt(f[f.length - 2]), "yes".equals(f[f.length - 1])));
+                    Integer.parseInt(f[f.length - 2]), "yes".equals(bugginess)));
         }
         return new Dataset(featureNames, rows);
     }

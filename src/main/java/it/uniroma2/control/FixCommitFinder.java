@@ -58,6 +58,14 @@ public final class FixCommitFinder {
         return !citedBugs(message).isEmpty();
     }
 
+    /**
+     * True se il messaggio cita un ticket qualsiasi del progetto (bug o no, esistente o no su Jira), revert
+     * compresi: serve al linkage della Fase 10, che misura quanti commit sono tracciati su Jira.
+     */
+    public boolean citesTicket(String message) {
+        return message != null && keyPattern.matcher(message).find();
+    }
+
     /** Un revert puro: il titolo (prima riga) del messaggio inizia con "Revert". */
     static boolean isRevert(String message) {
         return message.strip().toLowerCase(Locale.ROOT).startsWith("revert");

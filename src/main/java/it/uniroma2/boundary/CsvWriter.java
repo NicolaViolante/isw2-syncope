@@ -9,8 +9,8 @@ import it.uniroma2.entity.ProcessMetrics;
 import it.uniroma2.entity.Release;
 import it.uniroma2.entity.TicketFixes;
 import it.uniroma2.entity.TicketVersions;
-import it.uniroma2.entity.TicketVersions;
 import it.uniroma2.entity.ReleaseClass;
+import it.uniroma2.entity.ReleaseSummary;
 import it.uniroma2.entity.Snapshot;
 import it.uniroma2.entity.Ticket;
 import it.uniroma2.entity.Ticket.JiraVersion;
@@ -180,6 +180,17 @@ public final class CsvWriter {
             for (TicketVersions v : versions) {
                 out.println(v.key() + "," + nullable(v.ov()) + "," + nullable(v.fv()) + "," + nullable(v.iv()) + ","
                         + v.source());
+            }
+        }
+    }
+
+    /** I numeri di ogni release del dataset finale (Fase 10), per le tabelle del report. */
+    public static void writeReleaseSummary(List<ReleaseSummary> summaries, Path file) throws IOException {
+        try (PrintWriter out = open(file)) {
+            out.println("Release ID,Version Name,Date,Classes,Touched,Buggy,Buggy %,NSmells");
+            for (ReleaseSummary s : summaries) {
+                out.println(String.format(Locale.ROOT, "%d,%s,%s,%d,%d,%d,%.2f,%d", s.releaseId(), s.version(),
+                        s.date(), s.classes(), s.touched(), s.buggy(), s.buggyPercent(), s.nSmells()));
             }
         }
     }
